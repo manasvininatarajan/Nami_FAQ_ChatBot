@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAMI-NYC Helpline Assistant — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#26303F;
+    --dusk:#2C3E63;
+    --dusk-deep:#20304F;
+    --parchment:#FAF6F0;
+    --panel:#FFFFFF;
+    --sage:#6E9887;
+    --sage-soft:#E4EEE9;
+    --amber:#C97064;
+    --amber-soft:#FBEAE7;
+    --line:#E4DFD5;
+    --muted:#6B6459;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--parchment);
+    color:var(--ink);
+  }
+
+  /* ---------- Demo page chrome (remove when embedding on a real site) ---------- */
+  .demo-page{max-width:720px;margin:0 auto;padding:64px 24px 160px;}
+  .demo-page h1{font-family:'Lora',serif;font-weight:600;font-size:2rem;margin-bottom:8px;}
+  .demo-page p{line-height:1.6;color:var(--muted);}
+  .demo-note{
+    margin-top:28px;padding:16px 18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;font-size:0.9rem;color:var(--muted);line-height:1.55;
+  }
+  .demo-note code{background:var(--sage-soft);padding:1px 6px;border-radius:4px;font-size:0.85em;}
+
+  /* ---------- Launcher bubble ---------- */
+  #nami-launcher{
+    position:fixed;right:24px;bottom:24px;width:60px;height:60px;border-radius:50%;
+    background:var(--dusk);border:none;cursor:pointer;
+    box-shadow:0 6px 20px rgba(44,62,99,0.35);
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;
+  }
+  #nami-launcher::before{
+    content:"";position:absolute;inset:-6px;border-radius:50%;
+    border:1.5px solid var(--sage);opacity:0.55;
+    animation:nami-breathe 3.4s ease-in-out infinite;
+  }
+  @keyframes nami-breathe{
+    0%,100%{transform:scale(0.92);opacity:0.45;}
+    50%{transform:scale(1.12);opacity:0.05;}
+  }
+  #nami-launcher svg{width:26px;height:26px;position:relative;z-index:1;}
+
+  /* ---------- Chat panel ---------- */
+  #nami-panel{
+    position:fixed;right:24px;bottom:96px;width:360px;max-width:calc(100vw - 32px);
+    height:min(560px, 74vh);background:var(--panel);border-radius:16px;
+    box-shadow:0 20px 50px rgba(32,48,79,0.22);display:none;flex-direction:column;
+    overflow:hidden;z-index:9999;border:1px solid var(--line);
+  }
+  #nami-panel.open{display:flex;}
+
+  .nami-header{
+    background:var(--dusk-deep);color:#fff;padding:16px 18px 14px;
+  }
+  .nami-header h2{font-family:'Lora',serif;font-size:1.02rem;font-weight:600;margin:0 0 2px;}
+  .nami-header p{margin:0;font-size:0.76rem;color:#C9D3E4;line-height:1.4;}
+  .nami-close{
+    position:absolute;top:14px;right:14px;background:none;border:none;color:#C9D3E4;
+    cursor:pointer;font-size:1.1rem;line-height:1;padding:4px;
+  }
+
+  .nami-crisisbar{
+    background:var(--amber-soft);border-bottom:1px solid #F0D8D4;
+    padding:9px 16px;font-size:0.74rem;line-height:1.4;color:#8A3F36;
+    display:flex;gap:8px;align-items:flex-start;
+  }
+  .nami-crisisbar strong{color:#7A342B;}
+  .nami-crisisbar a{color:#7A342B;font-weight:600;text-decoration:underline;}
+
+  .nami-privacybar{
+    background:#F1F0EC;border-bottom:1px solid var(--line);
+    padding:7px 16px;font-size:0.68rem;line-height:1.4;color:var(--muted);
+  }
+  .nami-privacybar a{color:var(--dusk);}
+
+  .nami-messages{
+    flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;
+    background:var(--parchment);
+  }
+  .nami-msg{max-width:86%;padding:10px 13px;border-radius:12px;font-size:0.86rem;line-height:1.5;}
+  .nami-msg.bot{background:var(--panel);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px;}
+  .nami-msg.bot p{margin:0 0 8px;}
+  .nami-msg.bot p:last-child{margin-bottom:0;}
+  .nami-msg.bot ul{margin:4px 0 8px;padding-left:18px;}
+  .nami-msg.bot ul:last-child{margin-bottom:0;}
+  .nami-msg.bot li{margin-bottom:4px;}
+  .nami-msg.bot li:last-child{margin-bottom:0;}
+  .nami-msg.user{background:var(--dusk);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+  .nami-msg.crisis{
+    background:var(--amber-soft);border:1px solid #F0D8D4;color:#7A342B;align-self:flex-start;
+    max-width:100%;font-size:0.85rem;
+  }
+  .nami-msg.crisis strong{display:block;margin-bottom:4px;font-family:'Lora',serif;font-size:0.92rem;}
+  .nami-msg a{color:inherit;}
+
+  .nami-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px;background:var(--parchment);}
+  .nami-chip{
+    font-size:0.74rem;background:var(--sage-soft);color:#2F4A40;border:1px solid #D3E4DC;
+    padding:6px 10px;border-radius:999px;cursor:pointer;
+  }
+  .nami-chip:hover{background:#D3E4DC;}
+
+  .nami-inputrow{
+    display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--panel);
+  }
+  .nami-inputrow input{
+    flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-family:'Inter',sans-serif;font-size:0.86rem;outline:none;
+  }
+  .nami-inputrow input:focus{border-color:var(--sage);}
+  .nami-send{
+    background:var(--dusk);color:#fff;border:none;border-radius:10px;padding:0 14px;
+    cursor:pointer;font-size:0.86rem;font-weight:500;
+  }
+  .nami-send:disabled{opacity:0.5;cursor:default;}
+
+  .nami-footnote{
+    font-size:0.66rem;color:var(--muted);text-align:center;padding:6px 12px 10px;background:var(--panel);
+  }
+
+  .nami-typing{display:flex;gap:4px;padding:6px 2px;}
+  .nami-typing span{width:5px;height:5px;border-radius:50%;background:#B9C3D2;animation:nami-blink 1.2s infinite;}
+  .nami-typing span:nth-child(2){animation-delay:0.2s;}
+  .nami-typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes nami-blink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
+</style>
+</head>
+<body>
+
+<div class="demo-page">
+  <h1>NAMI-NYC — Public FAQ Assistant (Demo)</h1>
+  <p>This page previews an embeddable chat widget that answers general questions about NAMI-NYC's helpline, classes, support groups, volunteering, employment, and donating — built for anyone visiting the site, not just people already enrolled in a program.</p>
+  <div class="demo-note">
+    Open the chat bubble in the bottom-right corner to try it. Ask something like <em>"How do I volunteer?"</em>, <em>"What is Family-to-Family?"</em>, or <em>"How do I contact the helpline?"</em><br><br>
+    <strong>Embedding note:</strong> this file is self-contained — copy everything from <code>&lt;div id="nami-widget-root"&gt;</code> down to the closing <code>&lt;/script&gt;</code> and paste it before <code>&lt;/body&gt;</code> on any page. The live AI response only works inside Claude.ai's artifact preview (it calls Anthropic's API through Claude's built-in proxy with no key needed). For the real naminycmetro.org site, the fetch call needs to point at a small backend endpoint that holds your own Anthropic API key — flagged in the code with <code>TODO(host)</code>.
+  </div>
+</div>
+
+<!-- ======================= WIDGET (portable block) ======================= -->
+<div id="nami-widget-root">
+
+<button id="nami-launcher" aria-label="Open NAMI-NYC helpline assistant">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+  </svg>
+</button>
+
+<div id="nami-panel" role="dialog" aria-label="NAMI-NYC Helpline Assistant">
+  <div class="nami-header">
+    <button class="nami-close" id="nami-close" aria-label="Close chat">✕</button>
+    <h2>NAMI-NYC Helpline Assistant</h2>
+    <p>General information for anyone — not a substitute for our Helpline or emergency care.</p>
+  </div>
+
+  <div class="nami-crisisbar">
+    <span>🕊️</span>
+    <span><strong>In crisis right now?</strong> Call or text <a href="tel:988">988</a> to reach the Suicide &amp; Crisis Lifeline, 24/7 (English, Español, 中文 interpretation available). If it's an emergency, call <a href="tel:911">911</a>.</span>
+  </div>
+
+  <div class="nami-privacybar">
+    This chat is processed by a third-party AI service to generate responses. Please don't share personal health information, names, or other details you wouldn't want stored. See our <a href="https://naminycmetro.org/privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>.
+  </div>
+
+  <div class="nami-messages" id="nami-messages"></div>
+
+  <div class="nami-suggestions" id="nami-suggestions">
+    <button class="nami-chip">How do I contact the Helpline?</button>
+    <button class="nami-chip">How do I volunteer?</button>
+    <button class="nami-chip">What classes do you offer?</button>
+    <button class="nami-chip">Are there paid jobs at NAMI-NYC?</button>
+  </div>
+
+  <div class="nami-inputrow">
+    <input id="nami-input" type="text" placeholder="Type a question…" aria-label="Type a question" />
+    <button class="nami-send" id="nami-send">Send</button>
+  </div>
+  <div class="nami-footnote">This assistant can make mistakes. For urgent matters, contact the Helpline directly.</div>
+</div>
+
+</div>
+<!-- ======================= end portable block ======================= -->
+
+<script>
+(function(){
+
+  // ---------------------------------------------------------------------
+  // 1. KNOWLEDGE BASE — everything the assistant is allowed to state as fact.
+  //    Sourced from naminycmetro.org. Review and update this whenever the
+  //    organization's programs, hours, or contact details change.
+  // ---------------------------------------------------------------------
+  const KNOWLEDGE_BASE = `
+ORGANIZATION
+- National Alliance on Mental Illness of New York City, Inc. (NAMI-NYC), a 501(c)(3) nonprofit, EIN 13-3077692.
+- Mission: helping families and individuals affected by mental illness build better lives through education, support, and advocacy.
+- Address: 307 W. 38th St, 8th Floor, New York, NY 10018-2913. Administration: 212-684-3365.
+
+HELPLINE (for anyone seeking information or support — not a crisis line)
+- Call or text: 212-684-3264. Email: helpline@naminyc.org. Chat is available via the pop-up widget on naminycmetro.org.
+- Days/hours: Monday–Friday, 10 AM–6 PM ET, excluding federal holidays. (If a visitor asks outside these hours, let them know the Helpline is currently closed and will reopen the next business day, and still offer to answer general FAQ questions in the meantime.)
+- Available in English, Spanish, Chinese, and with interpretation in 180+ other languages.
+- Helpline responders are trained staff and volunteers with lived experience of mental illness.
+- Helpline can help with: general emotional support, understanding NYC's mental health system, referrals for therapy/housing/legal help/benefits (Medicaid, supportive housing), and connecting people to NAMI-NYC's own classes and support groups.
+- A separate Teen Helpline (same number, 212-684-3264) serves ages 14-18.
+
+MENTAL HEALTH CRISIS (not the Helpline's role)
+- Call, text, or chat 988 to reach the 988 Suicide & Crisis Lifeline — trained crisis counselors, 24 hours a day, 365 days a year. Also reachable at 988lifeline.org.
+- For immediate danger, call 911 or go to the nearest emergency room.
+
+FREE CLASSES (peer-led, taught by trained volunteers)
+- Peer-to-Peer: 8-week class for adults (18+) living with mental illness, focused on maintaining wellness. Offered in English and Spanish, plus versions for the Black community, LGBTQ+ community, and young adults (18-30).
+- Basics: 6-week class for parents/caregivers of children and adolescents (17 and younger) with emotional, behavioral, or mental health concerns (not affiliated with autism-specific programming). English and Spanish.
+- Family-to-Family: 8-week class for family members, caregivers, and friends of adults (18+) living with mental illness. Offered in English, Spanish, Chinese, and a version centered on the Black community's experience.
+- Family & Friends: a single 90-minute presentation for families, caregivers, and friends of adults living with mental illness.
+- All classes are free. Available in person and online. To register or ask which class fits, contact the Helpline (212-684-3264 or helpline@naminyc.org).
+
+SUPPORT GROUPS
+- Led by trained volunteers with lived experience, described as safe, judgment-free spaces. Contact the Helpline for current group schedules.
+
+FAMILY MATCH PROGRAM
+- Pairs a family member currently navigating a loved one's mental health condition with a trained peer mentor who has lived through something similar, for one-on-one phone support.
+
+WORKPLACE MENTAL HEALTH
+- NAMI-NYC offers employer trainings and resources for employers and employees on workplace mental health, including guidance for supporting a team after a suicide.
+
+TEEN PROGRAMS (ages 14-18)
+- Teen Helpline (call/text 212-684-3264), weekly teen support groups, and information for parents.
+
+VOLUNTEERING (naminycmetro.org/get-involved/volunteer)
+- Most volunteer roles require lived experience: either living with a mental health condition, or being a family member/caregiver of someone who does. These roles are not designed for people seeking academic credit or general resume-building experience.
+- Volunteers must be 18 or older; a separate Teen Volunteer track exists for younger applicants.
+- Most roles require a one-year commitment, staff-led training, a confidentiality agreement, and a volunteer contract.
+- NAMI-NYC receives high application volume; not all applicants are accepted, and interviews are scheduled on a rolling basis (can take a few weeks).
+- Examples of current roles: Community Outreach Tabling (sharing info at community events across NYC's five boroughs), Family Match Mentor (see above), Teen Support Group Facilitator (ages 18-30), and the Youth Mental Health Advisory Group (ages 18-24, or caregivers/professionals supporting teens).
+- Each role has its own application link on the Volunteer page; there is no single generic volunteer application.
+
+PAID EMPLOYMENT (careers, distinct from volunteering)
+- Paid job openings are listed at naminycmetro.org/careers. This is separate from the volunteer program described above.
+
+ADVOCACY & MEMBERSHIP
+- NAMI-NYC runs advocacy campaigns (e.g., Advocacy Ambassadors who speak with legislators) and offers paid membership. Details at naminycmetro.org/get-involved/advocacy and /get-involved/membership.
+
+DONATING
+- Ways to give include one-time/recurring donations, stock, donor-advised funds, cryptocurrency, planned giving, and corporate giving. See naminycmetro.org/donate.
+
+SPANISH-LANGUAGE RESOURCES
+- A Spanish-language section of the site is available at naminycmetro.org/espanol.
+`;
+
+  // ---------------------------------------------------------------------
+  // 2. SYSTEM PROMPT — behavior rules sent to the model on every turn.
+  // ---------------------------------------------------------------------
+  const SYSTEM_PROMPT = `You are the NAMI-NYC Helpline Assistant, a public-facing FAQ chatbot embedded on naminycmetro.org for the National Alliance on Mental Illness of New York City. Your visitors include people seeking support for themselves or a loved one, family members, prospective volunteers, job seekers, donors, students, and the general public — not only people already enrolled in a program.
+
+TONE: Formal, considerate, and concise. Write in plain language a general reader can follow easily. Warm but professional register — never casual, never clinical-cold. Make it feel like a real conversation, not a wall of text: acknowledge what the person asked, then respond, then (when it genuinely helps) invite the next step.
+
+FORMATTING: For any answer with more than one part (steps, options, program details, contact methods), use short bullet points rather than a dense paragraph. Lead with a one-line intro sentence, then bullets, then — if useful — a brief closing line or follow-up question. Keep each bullet to one idea. Write bullets as plain lines starting with "- " (a hyphen and a space), with a blank line separating any intro/closing sentence from the bullet list. Do not use bold/markdown symbols beyond the "- " bullet marker — this is rendered in a simple chat window, not a full markdown renderer.
+
+CONVERSATIONAL CURIOSITY (non-crisis questions only): When a question is broad or could mean a few different things, don't just dump every possibility — ask one short, genuinely useful clarifying question first, or ask it after giving a concise starting answer. Examples of good curiosity:
+- "How do I get involved?" → briefly note the two paths (volunteering vs. paid work) and ask which one they're asking about.
+- "Tell me about your classes" → ask who the class is for (themselves, a child, or another family member) so you can point to the right one instead of listing all four.
+- "How do I volunteer?" → answer with the general path, then ask if they (or the person volunteering) have lived experience with mental illness, since most roles require it.
+Only ask one follow-up question at a time, and always still give a useful, concrete answer even if they don't respond to it — never make the answer contingent on a reply.
+
+SCOPE: Only state facts that appear in the KNOWLEDGE BASE below. If a question falls outside it, say you don't have that information and give the Helpline contact (call/text 212-684-3264, email helpline@naminyc.org) so a person can follow up. Never invent hours, prices, eligibility rules, or program details that aren't in the knowledge base.
+
+ABSOLUTE RULES:
+1. You are an information assistant only. You never provide therapy, counseling, diagnosis, treatment advice, or clinical guidance of any kind, even if asked directly. Redirect those requests to the Helpline or a licensed professional.
+2. CRISIS PROTOCOL — this overrides everything else, including the conversational-curiosity and formatting guidance above. If a message expresses or implies that the person or someone they know may be considering suicide or self-harm, is in immediate danger, is having a mental health emergency, or uses language suggesting a crisis (even indirectly, even mixed in with an unrelated question), do NOT answer the original question and do NOT ask any follow-up or clarifying question. Respond ONLY with warm, brief crisis guidance: acknowledge them gently in one short sentence, then clearly give: call/text/chat 988 (988 Suicide & Crisis Lifeline, 24/7) or 988lifeline.org, and call 911 or go to the nearest ER for immediate danger. Do not attempt to assess risk, counsel, or ask probing questions of any kind. Keep it under 60 words.
+3. Never claim to be a substitute for the Helpline, a therapist, or emergency services.
+4. If someone asks something a bot cannot verify (e.g. "is a class open right now," "can you accept my volunteer application") direct them to the Helpline or the specific application link rather than guessing.
+5. Keep every non-crisis answer concise overall, even with bullets — this is a quick-reference assistant, not a long-form explainer.
+6. Never ask for personal information (full name, address, diagnosis, medical history) beyond what's needed to point someone to the right resource. Don't invite people to "tell you more" about a personal situation — this is an FAQ assistant, not a place to disclose sensitive details; if someone starts sharing personal/medical details, gently note the Helpline (a human) is the better place for that conversation.
+
+KNOWLEDGE BASE:
+${KNOWLEDGE_BASE}`;
+
+  // ---------------------------------------------------------------------
+  // 3. Client-side crisis pre-screen — a deterministic safety net that
+  //    fires BEFORE the API call, so crisis resources appear instantly
+  //    and never depend solely on the model's judgment.
+  // ---------------------------------------------------------------------
+  const CRISIS_PATTERNS = {
+    en: [
+      /\bsuicid(e|al)\b/i, /\bkill myself\b/i, /\bkill(ing)? me\b/i,
+      /\bwant(ed)? to die\b/i, /\bend(ing)? my life\b/i, /\bend it all\b/i,
+      /\bnot want(ing)? to (be alive|live)\b/i, /\bbetter off dead\b/i,
+      /\bhurt(ing)? myself\b/i, /\bself[\s-]?harm\b/i, /\bcut(ting)? myself\b/i,
+      /\bno reason to live\b/i, /\boverdose\b/i, /\bharm(ing)? (myself|someone)\b/i,
+      /\bcan'?t (go on|do this anymore)\b/i, /\bin danger\b/i, /\bemergency\b/i
+    ],
+    es: [
+      /\bsuicid(a|io|arme)\b/i, /\bquiero morir\b/i, /\bmatarme\b/i,
+      /\bquitarme la vida\b/i, /\bno quiero vivir\b/i, /\bmejor muert[oa]\b/i,
+      /\bhacerme daño\b/i, /\bautolesion/i, /\blastimarme\b/i,
+      /\bno puedo más\b/i, /\bno aguanto más\b/i, /\bacabar con (mi vida|todo)\b/i,
+      /\bsobredosis\b/i, /\ben peligro\b/i, /\bemergencia\b/i
+    ],
+    zh: [
+      /自杀/, /想死/, /不想活/, /杀死自己/, /杀了自己/, /伤害自己/,
+      /结束生命/, /结束我的生命/, /活不下去/, /自残/, /没有意义活/
+    ]
+  };
+  function detectCrisisLanguage(text){
+    for(const lang of Object.keys(CRISIS_PATTERNS)){
+      if(CRISIS_PATTERNS[lang].some(p => p.test(text))) return lang;
+    }
+    return null;
+  }
+  const CRISIS_REPLY = {
+    en: {
+      heading: "You're not alone.",
+      body: `Please reach out right now: call, text, or chat <strong>988</strong> to reach the 988 Suicide &amp; Crisis Lifeline — free, confidential, available 24/7 in English, Spanish, and other languages (<a href="https://988lifeline.org" target="_blank" rel="noopener">988lifeline.org</a>). If you or someone else is in immediate danger, call <strong>911</strong> or go to the nearest emergency room.`
+    },
+    es: {
+      heading: "No estás solo/a.",
+      body: `Por favor, busca ayuda ahora mismo: llama, envía un mensaje de texto, o chatea con la línea <strong>988</strong> (988 Suicide &amp; Crisis Lifeline) — gratuita, confidencial, disponible las 24 horas en español e inglés (<a href="https://988lifeline.org/es/" target="_blank" rel="noopener">988lifeline.org/es</a>). Si tú u otra persona está en peligro inmediato, llama al <strong>911</strong> o acude a la sala de emergencias más cercana.`
+    },
+    zh: {
+      heading: "你并不孤单。",
+      body: `请立即寻求帮助：拨打、发短信或在线联系 <strong>988</strong>（988 自杀与危机生命线）— 免费、保密，每周 7 天 24 小时提供服务，可使用中文翻译服务 (<a href="https://988lifeline.org" target="_blank" rel="noopener">988lifeline.org</a>)。如果你或他人处于紧急危险中，请拨打 <strong>911</strong> 或前往最近的急诊室。`
+    }
+  };
+
+  // ---------------------------------------------------------------------
+  // 4. UI wiring
+  // ---------------------------------------------------------------------
+  const launcher = document.getElementById('nami-launcher');
+  const panel = document.getElementById('nami-panel');
+  const closeBtn = document.getElementById('nami-close');
+  const messagesEl = document.getElementById('nami-messages');
+  const inputEl = document.getElementById('nami-input');
+  const sendBtn = document.getElementById('nami-send');
+  const suggestionsEl = document.getElementById('nami-suggestions');
+
+  let opened = false;
+  let history = []; // {role, content}
+
+  launcher.addEventListener('click', () => {
+    panel.classList.toggle('open');
+    if(!opened){
+      opened = true;
+      addBotMessage("Hello — I'm here to answer questions about NAMI-NYC's Helpline, classes, support groups, volunteering, careers, and donating.\n\nWhat brings you here today?");
+    }
+  });
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+  suggestionsEl.addEventListener('click', (e) => {
+    if(e.target.classList.contains('nami-chip')){
+      sendMessage(e.target.textContent);
+    }
+  });
+
+  function addUserMessage(text){
+    const div = document.createElement('div');
+    div.className = 'nami-msg user';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    scrollDown();
+  }
+  // Turns plain text with "- " / "• " bullet lines and blank-line paragraph
+  // breaks into real HTML, so the model's bullet-point answers actually
+  // render as a list rather than flat text. No external markdown lib needed.
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function formatBotText(raw){
+    const blocks = raw.split(/\n\s*\n/); // paragraphs separated by blank lines
+    let html = '';
+    blocks.forEach(block => {
+      const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+      const isList = lines.length && lines.every(l => /^[-•]\s+/.test(l));
+      if(isList){
+        html += '<ul>' + lines.map(l => `<li>${escapeHtml(l.replace(/^[-•]\s+/, ''))}</li>`).join('') + '</ul>';
+      } else {
+        html += `<p>${lines.map(escapeHtml).join('<br>')}</p>`;
+      }
+    });
+    return html;
+  }
+  function addBotMessage(text){
+    const div = document.createElement('div');
+    div.className = 'nami-msg bot';
+    div.innerHTML = formatBotText(text);
+    messagesEl.appendChild(div);
+    scrollDown();
+  }
+  function addCrisisMessage(lang){
+    const reply = CRISIS_REPLY[lang] || CRISIS_REPLY.en;
+    const div = document.createElement('div');
+    div.className = 'nami-msg crisis';
+    div.innerHTML = `<strong>${reply.heading}</strong>${reply.body}`;
+    messagesEl.appendChild(div);
+    scrollDown();
+  }
+  function addTyping(){
+    const div = document.createElement('div');
+    div.className = 'nami-msg bot';
+    div.id = 'nami-typing-indicator';
+    div.innerHTML = `<div class="nami-typing"><span></span><span></span><span></span></div>`;
+    messagesEl.appendChild(div);
+    scrollDown();
+  }
+  function removeTyping(){
+    const el = document.getElementById('nami-typing-indicator');
+    if(el) el.remove();
+  }
+  function scrollDown(){
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+  inputEl.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') sendMessage(inputEl.value);
+  });
+
+  async function sendMessage(text){
+    text = (text || '').trim();
+    if(!text) return;
+    inputEl.value = '';
+    sendBtn.disabled = true;
+    addUserMessage(text);
+    history.push({role:'user', content:text});
+
+    // Deterministic safety net — fires instantly, independent of the API,
+    // and checks English, Spanish, and Chinese crisis language.
+    const crisisLang = detectCrisisLanguage(text);
+    if(crisisLang){
+      addCrisisMessage(crisisLang);
+      history.push({role:'assistant', content:'[crisis resources shown]'});
+      sendBtn.disabled = false;
+      return;
+    }
+
+    addTyping();
+    try{
+      const reply = await callClaude(history);
+      removeTyping();
+      addBotMessage(reply);
+      history.push({role:'assistant', content:reply});
+    }catch(err){
+      removeTyping();
+      addBotMessage("I'm having trouble connecting right now. Please contact the Helpline directly at 212-684-3264 or helpline@naminyc.org.");
+      console.error(err);
+    }
+    sendBtn.disabled = false;
+  }
+
+  // ---------------------------------------------------------------------
+  // 5. Anthropic API call.
+  //    Inside Claude.ai's artifact preview this works with no key.
+  //    TODO(host): for production on naminycmetro.org, replace this fetch
+  //    with a call to your own backend endpoint (e.g. /api/nami-chat) that
+  //    holds your Anthropic API key server-side and forwards {system, messages}
+  //    to https://api.anthropic.com/v1/messages. Never put a real API key
+  //    in client-side code.
+  // ---------------------------------------------------------------------
+  async function callClaude(historyMessages){
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 400,
+        system: SYSTEM_PROMPT,
+        messages: historyMessages.map(m => ({role: m.role, content: m.content}))
+      })
+    });
+    const data = await response.json();
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
+    return textBlocks.join('\n').trim() || "I don't have that information yet — please contact the Helpline at 212-684-3264 for help.";
+  }
+
+})();
+</script>
+
+</body>
+</html>
