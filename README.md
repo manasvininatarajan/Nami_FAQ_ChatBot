@@ -26,7 +26,7 @@ Single self-contained HTML file — no build step, no dependencies. It calls the
 
 ## Try it
 
-Open `nami-nyc-faq-widget.html` in a browser (or view it as a Claude.ai artifact) and click the chat bubble in the bottom-right corner.
+Open `https://manasvininatarajan.github.io/Nami_FAQ_ChatBot/` in a browser (or view it as a Claude.ai artifact) and click the chat bubble in the bottom-right corner.
 
 ## Known limitations
 
